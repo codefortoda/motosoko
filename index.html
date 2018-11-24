@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>街のうつりかわりマップ</title>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<!-- leaflet.js -->
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css" integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
+	 crossorigin="" />
+	<script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js" integrity="sha512-nMMmRyTVoLYqjP9hrbed9S+FzjZHW5gY1TWCHA5ckwXZBadntCNs8kEqAWdrb9O7rxbCaA4lKTIWjDXZxflOcA=="
+	 crossorigin=""></script>
+
+	<!-- jquery & jqueryui -->
+	<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+	<script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+	 crossorigin="anonymous"></script>
+	<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js" integrity="sha256-VazP97ZCwtekAsvgPBSUwPFKdrwD3unUfSGVYrahUqU="
+	 crossorigin="anonymous"></script>
+
+	<!-- lightbox -->
+	<link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.7.1/css/lightbox.css" rel="stylesheet">
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.7.1/js/lightbox.min.js" type="text/javascript"></script>
+
+	<style>
+		html,
+		body {
+			height: 100%;
+			margin: 0;
+		}
+
+		#map {
+            width: 80vw;
+            height: 80vh;
+            margin: 0 auto;
+		}
+
+		#slider {
+            width: 80vw;
+            margin: 20px auto;
+		}
+
+		.ui-slider .ui-slider-handle {
+			width: 3em;
+		}
+
+        .thumbnail {
+            width: 180px;
+        }
+
+		#cover {
+			width: 100vw;
+			height: 100vh;
+			position: absolute;
+			top: 0;
+			left: 0;
+			z-index: 1000;
+			background-color: #666;
+			text-align: center;
+		}
+		#cover .title {
+			font-size: 48px;
+			color: #ffffff;
+			width: 100%;
+			margin: 40px auto;
+		}
+		#cover .team {
+			font-size: 32px;
+			color: #ffff;
+			position: absolute;
+			bottom: 40px;
+			left:50%;
+			transform:translateX(-50%);
+		}
+		#cover .frame {
+			width: 40vw;
+			background-color: #fff;
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translateY(-50%) translateX(-50%);
+		}
+		#cover .pic {
+			width: 100%;
+			margin: 20px;
+		}
+		#cover .logo {
+			position: absolute;
+			top: 10px;
+			right: 10px;
+		}
+	</style>
+
+</head>
+
+<body>
+	<h1>街のうつりかわりマップ</h1>
+	<div id="map"></div>
+	<script>
+		var catA = L.layerGroup();
+		var catB = L.layerGroup();
+
+		// marker定義
+        var dataA = [];
+        var dataB = [];
+        var url = 'https://script.google.com/macros/s/AKfycbwOx-16KY-VT06YZE1eyvcyxTFtpGnON8hwts_7UWUG5YuOHJM/exec?s=';
+        var getMarkers = function (dest, cat, sheet) {
+            $.get(url + sheet, function (data) {
+                data.forEach(function (facility) {
+                    dest.push(facility);
+                });
+                createMarkers(dest, cat);
+            });
+        };
+        var createMarkers = function (data, cat) {
+            cat.clearLayers();
+            data.forEach(function (facility) {
+                console.log('e:' + facility.established);
+                console.log('z:' + $('#slider').slider('value'));
+                if (!facility.established ||
+                    ($('#slider').slider('value') >= facility.established)) {
+                    addMarker(facility, cat);
+                }
+            });
+        };
+        var addMarker = function (facility, cat) {
+            var content = '';
+            if (facility.img1) {
+                content += '<a href="' + facility.img1 + '" data-lightbox="' + facility.name + '" data-title="' + facility.name + '">';
+                content += '<img src="' + facility.img1 + '" class="thumbnail"/></a>';
+                if (facility.img2) {
+                    content += '<a href="' + facility.img2 + '" data-lightbox="' + facility.name + '" data-title="' + facility.name + '"></a>';
+                }
+                if (facility.img3) {
+                    content += '<a href="' + facility.img3 + '" data-lightbox="' + facility.name + '" data-title="' + facility.name + '"></a>';
+                }
+                content += '<br>';
+            }
+            content += facility.name;
+
+			var icon = L.icon({
+				iconUrl: facility.icon,
+
+				iconSize: [60, 60], // size of the icon
+				iconAnchor: [0, 0], // point of the icon which will correspond to marker's location
+				popupAnchor: [-3, -76] // point from which the popup should open relative to the iconAnchor
+			});
+
+            L.marker([facility.latitude, facility.longitude], {
+                icon: icon
+            }).addTo(cat).bindPopup(content);
+        };
+        getMarkers(dataA, catA, 'education');
+        getMarkers(dataB, catB, 'parks');
+
+		// URL設定
+		var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+			attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+				'<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>'
+		});
+
+		var gsi = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
+			attribution: "<a href='https://maps.gsi.go.jp/development/ichiran.html' target='_blank'>地理院タイル</a>"
+		});
+
+		var map = L.map('map', {
+			center: [35.80667, 139.66953],
+			zoom: 17,
+			layers: [osm, gsi]
+		});
+
+		var baseLayers = {
+			"OpenStreetMap": osm,
+			"地理院地図": gsi
+		};
+
+		var overlays = {
+			"カテゴリA": catA,
+			"カテゴリB": catB
+		};
+		L.control.layers(baseLayers, overlays).addTo(map);
+	</script>
+
+	<div id="slider">
+		<div id="custom-handle" class="ui-slider-handle"></div>
+	</div>
+	<script>
+		$(function () {
+			var handle = $("#custom-handle");
+			$("#slider").slider({
+				value: 2018, // 初期値
+				min: 1900, // 最小
+				max: 2018, // 最大
+				create: function () {
+					handle.text($(this).slider("value"));
+				},
+				slide: function (event, ui) {
+					handle.text(ui.value);
+				},
+				change: function (event, ui) {
+                    createMarkers(dataA, catA);
+                    createMarkers(dataB, catB);
+				}
+			});
+		});
+	</script>
+
+	<div id="cover">
+		<div class="title">街のうつりかわりマップ</div>
+		<div class="frame">
+			<img class="pic" src="img/戸田町立第一小学校.jpg">
+		</div>
+		<div class="team">チームMOTOSOKO</div>
+		<img class="logo" src="img/logo.png">
+	</div>
+	<script>
+		$(function() {
+			$('#cover').on('click', function() {
+				$('#cover').hide('slide', { direction: "up" }, 1000);
+			});
+		});
+	</script>
+</body>
+
+</html>
